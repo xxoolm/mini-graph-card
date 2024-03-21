@@ -7,9 +7,9 @@ The card works with entities from within the **sensor** & **binary_sensor** doma
 
 ## Install
 
-### HACS (recommended)
+### HACS (recommended) 
 
-This card is available in [HACS](https://hacs.xyz/) (Home Assistant Community Store).  
+This card is available in [HACS](https://hacs.xyz/) (Home Assistant Community Store).
 <small>*HACS is a third party community store and is not included in Home Assistant out of the box.*</small>
 
 ### Manual install
@@ -26,7 +26,7 @@ This card is available in [HACS](https://hacs.xyz/) (Home Assistant Community St
 2. Grab `mini-graph-card-bundle.js`:
 
   ```
-  $ wget https://github.com/kalkih/mini-graph-card/releases/download/v0.10.0/mini-graph-card-bundle.js
+  $ wget https://github.com/kalkih/mini-graph-card/releases/download/v0.12.1/mini-graph-card-bundle.js
   ```
 
 3. Add the resource reference as decribed below.
@@ -37,7 +37,7 @@ If you configure Lovelace via YAML, add a reference to `mini-graph-card-bundle.j
 
   ```yaml
   resources:
-    - url: /local/mini-graph-card-bundle.js?v=0.10.0
+    - url: /local/mini-graph-card-bundle.js?v=0.12.1
       type: module
   ```
 
@@ -46,6 +46,7 @@ Else, if you prefer the graphical editor, use the menu to add the resource:
 1. Make sure, advanced mode is enabled in your user profile (click on your user name to get there)
 2. Navigate to Configuration -> Lovelace Dashboards -> Resources Tab. Hit orange (+) icon
 3. Enter URL `/local/mini-graph-card-bundle.js` and select type "JavaScript Module".
+(Use `/hacsfiles/mini-graph-card/mini-graph-card-bundle.js` and select "JavaScript Module" for HACS install)
 4. Restart Home Assistant.
 
 ## Updating
@@ -59,13 +60,16 @@ Else, if you prefer the graphical editor, use the menu to add the resource:
 
   ```yaml
   resources:
-    - url: /local/mini-graph-card-bundle.js?v=0.10.0
+    - url: /local/mini-graph-card-bundle.js?v=0.12.1
       type: module
   ```
 
 *You may need to empty the browsers cache if you have problems loading the updated card.*
 
 ## Using the card
+
+We recommend looking at the [Example usage section](#example-usage) to understand the basics to configure this card.
+(also) pay attention to the **required** options mentioned below.
 
 ### Options
 
@@ -75,6 +79,7 @@ Else, if you prefer the graphical editor, use the menu to add the resource:
 | type ***(required)*** | string |  | v0.0.1 | `custom:mini-graph-card`.
 | entities ***(required)*** | list |  | v0.2.0 | One or more sensor entities in a list, see [entities object](#entities-object) for additional entity options.
 | icon | string |  | v0.0.1 | Set a custom icon from any of the available mdi icons.
+| icon_image | string |  | v0.12.0 | Override icon with an image url
 | name | string |  | v0.0.1 | Set a custom name which is displayed beside the icon.
 | unit | string |  | v0.0.1 | Set a custom unit of measurement.
 | tap_action | [action object](#action-object-options) |  | v0.7.0 | Action on click/tap.
@@ -119,10 +124,11 @@ properties of the Entity object detailed in the following table (as per `sensor.
 | Name | Type | Default | Description |
 |------|:----:|:-------:|-------------|
 | entity ***(required)*** | string |  | Entity id of the sensor.
+| attribute | string | | Retrieves an attribute or [sub-attribute (attr1.attr2...)](#accessing-attributes-in-complex-structures) instead of the state
 | name | string |  | Set a custom display name, defaults to entity's friendly_name.
 | color | string |  | Set a custom color, overrides all other color options including thresholds.
 | unit | string |  | Set a custom unit of measurement, overrides `unit` set in base config.
-| aggregate_func | string |  | Override for aggregate function used to calculate point on the graph, `avg`, `min`, `max`, `first`, `last`, `sum`.
+| aggregate_func | string |  | Override for aggregate function used to calculate point on the graph, `avg`, `median`, `min`, `max`, `first`, `last`, `sum`.
 | show_state | boolean |  | Display the current state.
 | show_indicator | boolean |  | Display a color indicator next to the state, (only when more than two states are visible).
 | show_graph | boolean |  | Set to false to completely hide the entity in the graph.
@@ -151,8 +157,8 @@ All properties are optional.
 |------|:-------:|:-------:|-------------|
 | name | `true` | `true` / `false` | Display name.
 | icon | `true` | `true` / `false` | Display icon.
-| state | `true` | `true` / `false` | Display current state.
-| graph | `line` | `line` / `bar` / `false` | Display option for the graph.
+| state | `true` | `true` / `false` / `last` | Display current state. `last` will show the last graph point's value.
+| graph | `line` | `line` / `bar` / `false` | Display option for the graph. If set to `bar` a maximum of `96` bars will be displayed.
 | fill | `true` | `true` / `false` / `fade` | Display the line graph fill.
 | points | `hover` | `true` / `false` / `hover` | Display graph data points.
 | legend | `true` | `true` / `false` | Display the graph legend (only shown when graph contains multiple entities).
@@ -168,8 +174,51 @@ See [dynamic line color](#dynamic-line-color) for example usage.
 
 | Name | Type | Default | Description |
 |------|:----:|:-------:|-------------|
-| value ***(required)*** | number |  | The threshold for the color stop.
+| value ***(required [except in interpolation (see below)](#line-color-interpolation-of-stop-values))*** | number |  | The threshold for the color stop.
 | color ***(required)*** | string |  | Color in 6 digit hex format (e.g. `#008080`).
+
+##### Line color interpolation of stop values
+As long as the first and last threshold stops have `value` properties, intermediate stops can exclude `value`; they will be interpolated linearly. For example, given stops like:
+
+```yaml
+color_thresholds:
+  - value: 0
+    color: "#ff0000"
+  - color: "#ffff00"
+  - color: "#00ff00"
+  - value: 4
+    color: "#0000ff"
+```
+
+The values will be interpolated as:
+
+```yaml
+color_thresholds:
+  - value: 0
+    color: "#ff0000"
+  - value: 1.333333
+    color: "#ffff00"
+  - value: 2.666667
+    color: "#00ff00"
+  - value: 4
+    color: "#0000ff"
+```
+The example above will result in the following colors of the graph: if value is 
+* between `0` (including this value) and  `1.33333`, the color is `#ff0000`,
+* between `1.33333` (including this value) and `2.666667`, the color is `#ffff00`,
+* between `2.666667` (including this value) and `4`, the color is `#00ff00`,
+* equal to or more than `4`, the color is `#0000ff`.
+
+As a shorthand, you can just use a color string for the stops that you want interpolated:
+
+```yaml
+  - value: 0
+    color: "#ff0000"
+  - "#ffff00"
+  - "#00ff00"
+  - value: 4
+    color: "#0000ff"
+```
 
 #### Action object options
 | Name | Type | Default | Options | Description |
@@ -194,12 +243,14 @@ These buckets are converted later to single point/bar on the graph. Aggregate fu
 | Name | Since | Description |
 |------|:-------:|-------------|
 | `avg` | v0.8.0 | Average
+| `median` | v0.11.0 | Median
 | `min` | v0.8.0 | Minimum - lowest value
 | `max` | v0.8.0 | Maximum - largest value
 | `first` | v0.9.0 |
 | `last` | v0.9.0 |
 | `sum` | v0.9.2 |
 | `delta` | v0.9.4 | Calculates difference between max and min value
+| `diff` | v0.11.0 | Calculates difference between first and last value
 
 ### Theme variables
 The following theme variables can be set in your HA theme to customize the appearance of the card.
@@ -216,9 +267,9 @@ The following theme variables can be set in your HA theme to customize the appea
 ![Single entity card](https://user-images.githubusercontent.com/457678/52009150-884d2500-24d2-11e9-9f2b-2981210d3897.png)
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-   - sensor.illumination
+type: custom:mini-graph-card
+entities:
+ - sensor.illumination
 ```
 
 #### Alternative style
@@ -226,13 +277,13 @@ The following theme variables can be set in your HA theme to customize the appea
 ![Alternative style](https://user-images.githubusercontent.com/457678/52009161-8daa6f80-24d2-11e9-8678-47658a181615.png)
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-   - sensor.illumination
-  align_icon: left
-  align_state: center
-  show:
-    fill: false
+type: custom:mini-graph-card
+entities:
+ - sensor.illumination
+align_icon: left
+align_state: center
+show:
+  fill: false
 ```
 
 #### Multiple entities card
@@ -240,14 +291,14 @@ The following theme variables can be set in your HA theme to customize the appea
 ![Multiple entities card](https://user-images.githubusercontent.com/457678/52009165-900cc980-24d2-11e9-8cc6-c77de58465b5.png)
 
 ```yaml
-- type: custom:mini-graph-card
-  name: SERVER
-  icon: mdi:server
-  entities:
-    - entity: sensor.server_total
-      name: TOTAL
-    - sensor.server_sent
-    - sensor.server_received
+type: custom:mini-graph-card
+name: SERVER
+icon: mdi:server
+entities:
+  - entity: sensor.server_total
+    name: TOTAL
+  - sensor.server_sent
+  - sensor.server_received
 ```
 
 #### Bar chart card
@@ -255,12 +306,12 @@ The following theme variables can be set in your HA theme to customize the appea
 ![Bar chart card](https://user-images.githubusercontent.com/457678/52970286-985e7300-33b3-11e9-89bc-1278c4e2ecf2.png)
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - entity: sensor.energy_consumption
-  name: ENERGY CONSUMPTION
-  show:
-    graph: bar
+type: custom:mini-graph-card
+entities:
+  - entity: sensor.energy_consumption
+name: ENERGY CONSUMPTION
+show:
+  graph: bar
 ```
 
 #### Show data from the past week
@@ -270,25 +321,25 @@ Use the `hours_to_show` option to specify how many hours of history the graph sh
 Use the `points_per_hour` option to specify the accuracy/detail of the graph.
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - sensor.living_room_temp
-  name: LIVING ROOM
-  hours_to_show: 168
-  points_per_hour: 0.25
+type: custom:mini-graph-card
+entities:
+  - sensor.living_room_temp
+name: LIVING ROOM
+hours_to_show: 168
+points_per_hour: 0.25
 ```
 
 #### Graph only card
 Use the `show` option to show/hide UI elements.
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - sensor.humidity
-  show:
-    icon: false
-    name: false
-    state: false
+type: custom:mini-graph-card
+entities:
+  - sensor.humidity
+show:
+  icon: false
+  name: false
+  state: false
 ```
 
 #### Horizontally stacked cards
@@ -297,26 +348,26 @@ You can stack cards horizontally by using one or more `horizontal-stack(s)`.
 ![Horizontally stacked cards](https://user-images.githubusercontent.com/457678/52009171-926f2380-24d2-11e9-9dd4-28f010608858.png)
 
 ```yaml
-- type: horizontal-stack
-  cards:
-    - type: custom:mini-graph-card
-      entities:
-        - sensor.humidity
-      line_color: blue
-      line_width: 8
-      font_size: 75
-    - type: custom:mini-graph-card
-      entities:
-        - sensor.illumination
-      line_color: '#e74c3c'
-      line_width: 8
-      font_size: 75
-    - type: custom:mini-graph-card
-      entities:
-        - sensor.temperature
-      line_color: var(--accent-color)
-      line_width: 8
-      font_size: 75
+type: horizontal-stack
+cards:
+  - type: custom:mini-graph-card
+    entities:
+      - sensor.humidity
+    line_color: blue
+    line_width: 8
+    font_size: 75
+  - type: custom:mini-graph-card
+    entities:
+      - sensor.illumination
+    line_color: '#e74c3c'
+    line_width: 8
+    font_size: 75
+  - type: custom:mini-graph-card
+    entities:
+      - sensor.temperature
+    line_color: var(--accent-color)
+    line_width: 8
+    font_size: 75
 ```
 
 #### Dynamic line color
@@ -325,18 +376,18 @@ Have the graph change line color dynamically.
 ![Dynamic line color](https://user-images.githubusercontent.com/457678/52573150-cbd05900-2e19-11e9-9e01-740753169093.png)
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - sensor.sensor_temperature
-  show:
-    labels: true
-  color_thresholds:
-    - value: 20
-      color: "#f39c12"
-    - value: 21
-      color: "#d35400"
-    - value: 21.5
-      color: "#c0392b"
+type: custom:mini-graph-card
+entities:
+  - sensor.sensor_temperature
+show:
+  labels: true
+color_thresholds:
+  - value: 20
+    color: "#f39c12"
+  - value: 21
+    color: "#d35400"
+  - value: 21.5
+    color: "#c0392b"
 ```
 
 #### Alternate y-axis
@@ -346,24 +397,24 @@ shows turning off the line, points and legend.
 ![Alternate y-axis](https://user-images.githubusercontent.com/373079/60764115-63cf2780-a0c6-11e9-8b9a-97fc47161180.png)
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - entity: sensor.verandah
-      name: Verandah
-    - entity: sensor.lounge
-      name: Lounge
-    - entity: sensor.kitchen
-      name: Kitchen
-    - color: gray
-      entity: input_number.nighttime
-      name: Night
-      show_line: false
-      show_points: false
-      show_legend: false
-      y_axis: secondary
-  show:
-    labels: true
-    labels_secondary: true
+type: custom:mini-graph-card
+entities:
+  - entity: sensor.verandah
+    name: Verandah
+  - entity: sensor.lounge
+    name: Lounge
+  - entity: sensor.kitchen
+    name: Kitchen
+  - color: gray
+    entity: input_number.nighttime
+    name: Night
+    show_line: false
+    show_points: false
+    show_legend: false
+    y_axis: secondary
+show:
+  labels: true
+  labels_secondary: true
 ```
 
 
@@ -374,15 +425,15 @@ shows turning off the line, points and legend.
 You can group values by date, this way you can visualize for example daily energy consumption.
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - entity: sensor.energy_daily
-  name: Energy consumption
-  hours_to_show: 168
-  aggregate_func: max
-  group_by: date
-  show:
-    graph: bar
+type: custom:mini-graph-card
+entities:
+  - entity: sensor.energy_daily
+name: Energy consumption
+hours_to_show: 168
+aggregate_func: max
+group_by: date
+show:
+  graph: bar
 ```
 
 #### Data aggregation functions
@@ -392,22 +443,22 @@ from last week.
 ![mini_temperature_aggregate_daily](https://user-images.githubusercontent.com/8268674/66688610-44c0d280-ec7f-11e9-86c2-a728da239dab.png)
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - entity: sensor.outside_temp
-      aggregate_func: max
-      name: Max
-      color: #e74c3c
-    - entity: sensor.outside_temp
-      aggregate_func: min
-      name: Min
-    - entity: sensor.outside_temp
-      aggregate_func: avg
-      name: Avg
-      color: green
-  name: Temp outside daily (last week)
-  hours_to_show: 168
-  group_by: date
+type: custom:mini-graph-card
+entities:
+  - entity: sensor.outside_temp
+    aggregate_func: max
+    name: Max
+    color: "#e74c3c"
+  - entity: sensor.outside_temp
+    aggregate_func: min
+    name: Min
+  - entity: sensor.outside_temp
+    aggregate_func: avg
+    name: Avg
+    color: green
+name: Temp outside daily (last week)
+hours_to_show: 168
+group_by: date
 ```
 
 #### Non-numeric sensor states
@@ -417,30 +468,108 @@ from last week.
 You can render non-numeric states by providing state_map config. For example this way you can show data coming from binary sensors.
 
 ```yaml
-- type: custom:mini-graph-card
-  entities:
-    - entity: binary_sensor.living_room_motion
-      name: Living room
-    - entity: binary_sensor.corridor_motion
-      name: Corridor
-    - entity: binary_sensor.master_bed_motion
-      name: Master bed.
-      color: green
-    - entity: binary_sensor.bedroom_motion
-      name: Bedroom
-  name: Motion last hour
-  hours_to_show: 1
-  points_per_hour: 60
-  update_interval: 30
-  aggregate_func: max
-  line_width: 2
-  smoothing: false
-  state_map:
-    - value: "off"
-      label: Clear
-    - value: "on"
-      label: Detected
+type: custom:mini-graph-card
+entities:
+  - entity: binary_sensor.living_room_motion
+    name: Living room
+  - entity: binary_sensor.corridor_motion
+    name: Corridor
+  - entity: binary_sensor.master_bed_motion
+    name: Master bed.
+    color: green
+  - entity: binary_sensor.bedroom_motion
+    name: Bedroom
+name: Motion last hour
+hours_to_show: 1
+points_per_hour: 60
+update_interval: 30
+aggregate_func: max
+line_width: 2
+smoothing: false
+state_map:
+  - value: "off"
+    label: Clear
+  - value: "on"
+    label: Detected
 ```
+
+#### Showing additional info on the card
+
+![изображение](https://user-images.githubusercontent.com/71872483/170584118-ef826b60-dce3-42ec-a005-0f467616cd37.png)
+
+It is possible to show a state without displaying a graph for a sensor.
+Imagine there are two CO-2 sensors & one humidity sensor; graphs are displayed for the CO-2 only, and the humidity is shown as a state only.
+```
+type: custom:mini-graph-card
+entities:
+  - entity: sensor.xiaomi_cg_1_humidity
+    show_state: true
+    show_graph: false
+  - entity: sensor.xiaomi_cg_1_co2
+    color: green
+    show_state: false
+    name: CO2-1
+  - entity: sensor.xiaomi_cg_2_co2
+    color: orange
+    show_state: false
+    name: CO2-2
+name: Humidity
+hours_to_show: 4
+points_per_hour: 60
+show:
+  name: true
+  legend: true
+  icon: false
+  labels: true
+```
+This method may be also used to add a calculated value with it's own `aggregate_func` option.
+
+#### Accessing attributes in complex structures
+
+When using the `attribute` option in the [entities object](#entities-object), you can access data in structured attributes, such as dictionaries and lists.
+
+##### Accessing dictionary attributes
+Suppose you have data stored inside a *dictionary* attribute named `dict_attribute`
+```yaml
+dict_attribute:
+  value_1: 53
+  value_2: 64
+  value_3: 72
+```
+Such data should be addressed as `dict_attribute.sub_attribute`:
+```
+type: custom:mini-graph-card
+entities:
+  - entity: sensor.testing_object_data
+    attribute: dict_attribute.value_1
+    name: value_1 from dictionary attribute
+```
+![image](https://github.com/ildar170975/mini-graph-card/assets/71872483/0549afd5-901e-4e86-a144-edc4cd207440)
+
+##### Accessing list attributes
+
+Suppose you have data stored inside a *list* attribute named `list_attribute`:
+```yaml
+list_attribute:
+  - value_1: 67
+    value_2: 65
+    value_3: 93
+  - value_1: 134
+    value_2: 130
+    value_3: 186
+  - value_1: 201
+    value_2: 195
+    value_3: 279
+```
+Such data should be addressed as `list_attribute.index.sub_attribute`:
+```
+type: custom:mini-graph-card
+entities:
+  - entity: sensor.testing_object_data_list
+    attribute: list_attribute.0.value_1
+    name: value_1 from first element of list attribute
+```
+![image](https://github.com/ildar170975/mini-graph-card/assets/71872483/eebd0cea-da93-4bf5-97a1-118edd2a9c5e)
 
 
 ## Development
@@ -486,7 +615,9 @@ $ npm run watch
 
 *The new `mini-graph-card-bundle.js` will be build and ready inside `/dist`.*
 
-**If you plan to submit a PR, please base it on the `dev` branch.**
+Note that the `dev` branch is the most up-to-date and matches our beta releases.
+
+Please refer to the [Contribution Guidelines](./CONTRIBUTING.md) if you're interested in contributing to the project. (And thanks for considering!)
 
 ## Getting errors?
 Make sure you have `javascript_version: latest` in your `configuration.yaml` under `frontend:`.
